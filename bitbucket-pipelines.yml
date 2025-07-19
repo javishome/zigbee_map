@@ -1,0 +1,8 @@
+image: ubuntu:latest
+
+pipelines:
+    branches:
+        main:
+            - step:
+                  script:
+                      - git push --all git@github.com:javishome/zigbee_map.git

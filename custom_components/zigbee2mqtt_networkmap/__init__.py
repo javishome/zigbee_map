@@ -5,6 +5,9 @@ from homeassistant.components.webhook import (
     async_register,
 )
 import os
+from homeassistant.components.frontend import (
+    async_register_built_in_panel,
+)
 from distutils.dir_util import copy_tree
 from datetime import datetime
 from aiohttp import web
@@ -23,7 +26,6 @@ async def async_setup(hass, config):
 
     # 👇 Chạy copy_tree trong thread executor
     await hass.async_add_executor_job(copy_tree, fromDirectory, toDirectory)
-
     # topic = config[DOMAIN].get(CONF_TOPIC, DEFAULT_TOPIC)
     topic = DEFAULT_TOPIC
     entity_id = 'zigbee2mqtt_networkmap.map_last_update'
@@ -104,8 +106,27 @@ async def async_setup(hass, config):
 
     hass.services.async_register(DOMAIN, 'update', update_service)
     return True
+
+async def register_panel(hass):
+    async_register_built_in_panel(
+        hass,
+        component_name="custom",  # 👈 Bắt buộc là "custom" nếu dùng panel_custom
+        sidebar_title="Zigbee Map",
+        sidebar_icon="mdi:zigbee",
+        frontend_url_path="z2m-map",
+        config={
+            "_panel_custom": {
+                "name": "z2m-map",  # 👈 phải trùng với customElements.define(...)
+                "module_url": "/local/community/zigbee2mqtt_networkmap/zigbee2mqtt-map-panel.js",
+                "full_width": True,
+            }
+        },
+        require_admin=True,
+    )
+    
 async def async_setup_entry(hass, entry):
     """Set up zigbee2mqtt_networkmap from a config entry."""
     # Gọi hàm setup của bạn tại đây
+    await register_panel(hass)
     await async_setup(hass, {entry.domain: entry.data})
     return True

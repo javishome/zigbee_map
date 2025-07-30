@@ -1,7 +1,7 @@
 {
   "domain": "zigbee2mqtt_networkmap",
-  "name": "zigbee2mqtt Networkmap",
-  "version": "0.0.1",
+  "name": "Zigbee map",
+  "version": "1.0.0",
   "documentation": "https://github.com/rgruebel/ha_zigbee2mqtt_networkmap",
   "dependencies": ["mqtt"],
   "codeowners": [

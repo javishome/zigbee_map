@@ -1,4 +1,6 @@
 {
     "name": "Zigbee Map",
-    "content_in_root": true
+    "content_in_root": false,
+    "hide_default_branch": true,
+    "hacs": "1.35.0"
 }

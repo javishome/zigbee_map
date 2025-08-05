@@ -2,10 +2,10 @@
   "domain": "zigbee2mqtt_networkmap",
   "name": "Zigbee map",
   "version": "1.0.0",
-  "documentation": "https://github.com/rgruebel/ha_zigbee2mqtt_networkmap",
+  "documentation": "https://github.com/javishome/zigbee_map",
   "dependencies": ["mqtt"],
   "codeowners": [
-    "@rgruebel"
+    "@javishome"
   ],
   "config_flow": true,
   "requirements": []

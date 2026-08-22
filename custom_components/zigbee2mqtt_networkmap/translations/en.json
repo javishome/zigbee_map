@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Zigbee map",
+        "description": "Enter one zigbee2mqtt base topic per line. Each must match the `mqtt.base_topic` of that zigbee2mqtt instance, for example `zigbee2mqtt`, `zigbee2mqtt2`, `zigbee2mqtt3`. An instance that is not running yet can be listed already: it shows as unavailable until it appears.",
+        "data": {
+          "topics": "Base topics"
+        }
+      }
+    },
+    "error": {
+      "invalid_topics": "Enter at least one base topic."
+    },
+    "abort": {
+      "single_instance_allowed": "Zigbee map is already configured. Add further zigbee2mqtt instances through the Configure button instead."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Zigbee map options",
+        "description": "Add or remove zigbee2mqtt base topics. The integration reloads after saving.",
+        "data": {
+          "topics": "Base topics"
+        }
+      }
+    },
+    "error": {
+      "invalid_topics": "Enter at least one base topic."
+    }
+  },
+  "services": {
+    "update": {
+      "name": "Update",
+      "description": "Requests a fresh network map from zigbee2mqtt. Without a network, every configured base topic is asked.",
+      "fields": {
+        "network": {
+          "name": "Network",
+          "description": "Base topic of the zigbee2mqtt instance to refresh. Omit to refresh every configured instance."
+        }
+      }
+    }
+  }
+}

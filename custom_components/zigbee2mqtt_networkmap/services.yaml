@@ -1,2 +1,15 @@
 update:
-  description: Update the Networkmap.
+  name: Update
+  description: >-
+    Requests a fresh network map from zigbee2mqtt. Without a network, every
+    configured base topic is asked.
+  fields:
+    network:
+      name: Network
+      description: >-
+        Base topic of the zigbee2mqtt instance to refresh, for example
+        zigbee2mqtt2. Omit to refresh every configured instance.
+      required: false
+      example: zigbee2mqtt2
+      selector:
+        text:

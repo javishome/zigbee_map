@@ -1,33 +1,573 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
   <meta charset="utf-8">
-  <style type="text/css" media="screen">
-    body,
-    html {
-      position: fixed;
-      width: 100%;
-      height: 100%;
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zigbee network map</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f5f7;
+      --surface: #ffffff;
+      --surface-2: #eceef1;
+      --border: #d8dce1;
+      --text: #1b1f24;
+      --text-dim: #656d78;
+      --accent: #0b7ec4;
+      --accent-text: #ffffff;
+      --canvas: #ffffff;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 4px 16px rgba(0, 0, 0, .06);
+      --radius: 10px;
+    }
+
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #10141a;
+      --surface: #191f27;
+      --surface-2: #222a35;
+      --border: #303a47;
+      --text: #e6eaf0;
+      --text-dim: #97a3b2;
+      --accent: #38a3e0;
+      --accent-text: #06121c;
+      --canvas: #141a21;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 4px 16px rgba(0, 0, 0, .35);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
       padding: 0;
-      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
 
-    svg {
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---------- toolbar ---------- */
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 10px 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      z-index: 3;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      letter-spacing: .2px;
+      margin-right: 2px;
+    }
+
+    .brand svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--accent);
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .chip b {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+      background: var(--text-dim);
+    }
+
+    .dot.online {
+      background: #2fa84f;
+    }
+
+    .dot.offline {
+      background: #d1495b;
+    }
+
+    .dot.unknown {
+      background: #d9a022;
+    }
+
+    .spacer {
+      flex: 1 1 auto;
+    }
+
+    .field {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    select,
+    input[type="search"] {
+      appearance: none;
+      font: inherit;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 9px;
+    }
+
+    select {
+      padding-right: 26px;
+      background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
+        linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+      background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%;
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat;
+    }
+
+    input[type="search"] {
+      width: 190px;
+    }
+
+    input[type="search"]::-webkit-search-cancel-button {
+      filter: grayscale(1);
+    }
+
+    select:focus-visible,
+    input:focus-visible,
+    button:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    button {
+      font: inherit;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 11px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      cursor: pointer;
+      transition: background .12s, border-color .12s;
+    }
+
+    button:hover:not(:disabled) {
+      background: var(--border);
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: default;
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-text);
+      font-weight: 600;
+    }
+
+    button.primary:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+
+    button.icon {
+      padding: 6px;
+      width: 30px;
+      justify-content: center;
+    }
+
+    button svg {
+      width: 15px;
+      height: 15px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* ---------- graph canvas ---------- */
+
+    main {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      background: var(--canvas);
+      overflow: hidden;
+    }
+
+    #output {
+      position: absolute;
+      inset: 0;
+    }
+
+    #output svg {
       width: 100%;
       height: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
+      display: block;
+      cursor: grab;
     }
 
-    .footer {
+    #output svg:active {
+      cursor: grabbing;
+    }
+
+    g.node,
+    g.edge {
+      transition: opacity .15s;
+    }
+
+    g.node {
+      cursor: pointer;
+    }
+
+    body.filtering g.node.dim,
+    body.filtering g.edge.dim {
+      opacity: .1;
+    }
+
+    body.filtering g.node.near {
+      opacity: .55;
+    }
+
+    g.node.hidden,
+    g.edge.hidden {
+      display: none;
+    }
+
+    g.node.selected>*:first-child {
+      filter: drop-shadow(0 0 4px var(--accent));
+    }
+
+    /* ---------- overlays ---------- */
+
+    .overlay {
       position: absolute;
-      padding: 10px;
+      z-index: 2;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    #zoombar {
+      right: 12px;
+      top: 12px;
+      display: flex;
+      flex-direction: column;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    #zoombar button {
+      border: none;
+      background: transparent;
+    }
+
+    #legend {
+      left: 12px;
+      bottom: 12px;
+      padding: 9px 11px;
+      font-size: 12px;
+      color: var(--text-dim);
+      max-width: 240px;
+    }
+
+    #legend h3 {
+      margin: 0 0 6px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: var(--text-dim);
+    }
+
+    #legend ul {
       margin: 0;
-      background: rgba(255, 255, 255, 0.4);
-      bottom: 10px;
-      color: rgba(0, 0, 0, 0.52);
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 2px;
+    }
+
+    #legend li {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    #legend button {
+      width: 100%;
+      justify-content: flex-start;
+      gap: 7px;
+      padding: 3px 5px;
+      font-size: 12px;
+      color: var(--text-dim);
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+    }
+
+    #legend button:hover {
+      background: var(--surface-2);
+    }
+
+    #legend button[aria-pressed="false"] {
+      opacity: .45;
+    }
+
+    #legend button[aria-pressed="false"] .name {
+      text-decoration: line-through;
+    }
+
+    #legend .count {
+      margin-left: auto;
+      padding-left: 10px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    #legend button[aria-pressed="false"] .count {
+      color: var(--text-dim);
+    }
+
+    .hint {
+      margin: 7px 0 0;
+      padding: 6px 0 0;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+    }
+
+    .swatch {
+      width: 13px;
+      height: 13px;
+      border-radius: 3px;
+      flex: 0 0 auto;
+      border: 1px solid rgba(0, 0, 0, .25);
+    }
+
+    .swatch.dashed {
+      border-style: dashed;
+      border-color: var(--text-dim);
+      background: transparent;
+    }
+
+    html[data-theme="dark"] .swatch.dashed {
+      background: #232c37;
+    }
+
+    #details {
+      right: 12px;
+      bottom: 12px;
+      width: 268px;
+      padding: 11px 13px;
+      font-size: 13px;
+      display: none;
+    }
+
+    #details.visible {
+      display: block;
+    }
+
+    #details h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      padding-right: 20px;
+      word-break: break-word;
+    }
+
+    #details dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 3px 10px;
+      font-size: 12px;
+    }
+
+    #details dt {
+      color: var(--text-dim);
+    }
+
+    #details dd {
+      margin: 0;
+      font-variant-numeric: tabular-nums;
+      word-break: break-all;
+    }
+
+    #details .close {
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      border: none;
+      background: transparent;
+      padding: 2px 5px;
+      color: var(--text-dim);
+    }
+
+    .neighbours {
+      margin: 9px 0 0;
+      padding: 8px 0 0;
+      border-top: 1px solid var(--border);
+      list-style: none;
+      display: grid;
+      gap: 3px;
+      font-size: 12px;
+      max-height: 132px;
+      overflow-y: auto;
+    }
+
+    .neighbours li {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .neighbours .lqi {
+      font-variant-numeric: tabular-nums;
+      color: var(--text-dim);
+    }
+
+    #status {
+      position: absolute;
+      left: 50%;
+      top: 14px;
+      transform: translateX(-50%);
+      z-index: 4;
+      display: none;
+      align-items: center;
+      gap: 9px;
+      max-width: min(560px, calc(100% - 24px));
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      font-size: 13px;
+    }
+
+    #status.visible {
+      display: flex;
+    }
+
+    #status.error {
+      border-color: #d1495b;
+      color: #d1495b;
+    }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 auto;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    #status:not(.busy) .spinner {
+      display: none;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .empty {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-align: center;
+      padding: 24px;
+      color: var(--text-dim);
+    }
+
+    .empty.visible {
+      display: flex;
+    }
+
+    .empty svg {
+      width: 46px;
+      height: 46px;
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 1.5;
+    }
+
+    .empty strong {
+      color: var(--text);
+      font-size: 15px;
+    }
+
+    kbd {
+      font: inherit;
+      font-size: 11px;
+      padding: 1px 5px;
+      border: 1px solid var(--border);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      background: var(--surface-2);
+    }
+
+    @media (max-width: 900px) {
+
+      #routerCount,
+      #endCount {
+        display: none;
+      }
+    }
+
+    @media (max-width: 720px) {
+
+      .hint,
+      #legend h3,
+      .brand span {
+        display: none;
+      }
+
+      input[type="search"] {
+        width: 120px;
+      }
     }
   </style>
 </head>
@@ -37,183 +577,1067 @@
   <script>document.write("<script type='text/javascript' src='source.js?v=" + Date.now() + "'><\/script>");</script>
   <script src="viz.js/viz.js"></script>
   <script src="viz.js/full.render.js"></script>
-  <script src='panzoom/panzoom.min.js'></script>
-  <div id="output">
-    
-  </div>
-  <p class='footer'>
-    <label id="engine">
-      Engine:
-      <select>
-        <option>circo</option>
-        <option>dot</option>
-        <option>fdp</option>
-        <option>neato</option>
-        <option>osage</option>
-        <option>twopi</option>
+  <script src="panzoom/panzoom.min.js"></script>
+
+  <header>
+    <span class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 2 3 7v10l9 5 9-5V7l-9-5Zm0 2.3 6.8 3.8L12 11.9 5.2 8.1 12 4.3ZM5 9.8l6 3.4v6.9l-6-3.3V9.8Zm8 10.3v-6.9l6-3.4v7l-6 3.3Z" />
+      </svg>
+      <span>Zigbee map</span>
+    </span>
+
+    <span class="chip" id="deviceCount" title="Devices shown / total">— devices</span>
+    <span class="chip" id="routerCount" title="Mains-powered routers in the map">— routers</span>
+    <span class="chip" id="endCount" title="Battery-powered end devices in the map">— end devices</span>
+    <span class="chip" id="linkCount" title="Links shown / total">— links</span>
+
+    <span class="spacer"></span>
+
+    <input type="search" id="search" placeholder="Filter devices…" autocomplete="off"
+      aria-label="Filter devices by name, address or model">
+
+    <label class="field" id="networkField" for="networkSelect">Network
+      <select id="networkSelect" aria-label="zigbee2mqtt instance to show"></select>
+    </label>
+
+    <span class="chip" id="networkStatus" title="State of the selected instance">
+      <span class="dot unknown"></span><span id="networkStatusText">unknown</span>
+    </span>
+
+    <label class="field" for="engineSelect">Layout
+      <select id="engineSelect">
+        <option value="circo">circo</option>
+        <option value="dot">dot</option>
+        <option value="fdp">fdp</option>
+        <option value="neato">neato</option>
+        <option value="osage">osage</option>
+        <option value="twopi">twopi</option>
       </select>
-    </label> - Last updated on <span id="lastUpdateTime">n/a</span> - <a id="updateLink" title="Update" href="#" onclick="updateSource();return false;">Update and check</a>
-  </p>
+    </label>
+
+    <span class="chip" id="lastUpdate" title="When this map was received">Never updated</span>
+
+    <button class="icon" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path id="themeIcon" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+      </svg>
+    </button>
+
+    <button class="primary" id="updateButton" title="Update the selected instance (R)">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 12a9 9 0 1 1-2.6-6.4" />
+        <path d="M21 3v6h-6" />
+      </svg>
+      Update
+    </button>
+
+    <button class="icon" id="updateAllButton" title="Update every instance (Shift+R)"
+      aria-label="Update every instance">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+        <path d="M20 4v5h-5" />
+        <path d="M4 13a8 8 0 0 0 2.3-5.7" />
+      </svg>
+    </button>
+  </header>
+
+  <main>
+    <div id="output"></div>
+
+    <div class="empty" id="empty">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="5" r="2.5" />
+        <circle cx="5" cy="18" r="2.5" />
+        <circle cx="19" cy="18" r="2.5" />
+        <path d="M12 7.5 6.5 15.8M12 7.5l5.5 8.3M7.5 18h9" />
+      </svg>
+      <strong>No map received yet</strong>
+      <span id="emptyText"></span>
+    </div>
+
+    <div class="overlay" id="zoombar">
+      <button class="icon" id="zoomIn" title="Zoom in (+)" aria-label="Zoom in">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
+      <button class="icon" id="zoomOut" title="Zoom out (−)" aria-label="Zoom out">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 12h14" />
+        </svg>
+      </button>
+      <button class="icon" id="zoomFit" title="Fit to view (F)" aria-label="Fit to view">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="overlay" id="legend">
+      <h3>Device types</h3>
+      <ul>
+        <li>
+          <button type="button" data-kind="coordinator" aria-pressed="true" title="Show or hide the coordinator (1)">
+            <span class="swatch" style="background:#e04e5d"></span>
+            <span class="name">Coordinator</span>
+            <span class="count">0</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" data-kind="router" aria-pressed="true" title="Show or hide routers (2)">
+            <span class="swatch" style="background:#fff8ce"></span>
+            <span class="name">Router (mains)</span>
+            <span class="count">0</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" data-kind="end" aria-pressed="true" title="Show or hide end devices (3)">
+            <span class="swatch dashed"></span>
+            <span class="name">End device (battery)</span>
+            <span class="count">0</span>
+          </button>
+        </li>
+      </ul>
+      <p class="hint">Edge labels show link quality (LQI)</p>
+    </div>
+
+    <div class="overlay" id="details" role="dialog" aria-label="Device details">
+      <button class="close" id="detailsClose" aria-label="Close details">✕</button>
+      <h3 id="detailsTitle"></h3>
+      <dl id="detailsMeta"></dl>
+      <ul class="neighbours" id="detailsLinks"></ul>
+    </div>
+
+    <div id="status" role="status" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>
+      <span id="statusText"></span>
+    </div>
+  </main>
 
   <script>
-    // Set engine from URL param if possible
-    var engine = new URL(window.location.href).searchParams.get("engine");
-    if (engine === null) {
-      engine = "circo";
-    }
-    document.querySelector("#engine select").value = engine;
+    // settings.js and source.js are written by the integration, so both may be
+    // missing on a fresh install or when <config>/www is not writable.
+    var networks = typeof networks === "undefined" ? null : networks;
+    var networks_data = typeof networks_data === "undefined" ? null : networks_data;
 
-    document.querySelector("#engine select").addEventListener("change", function () {
-      updateMap();
-      
+    if (!networks_data || typeof networks_data !== "object") {
+      networks_data = {};
+    }
+    if (!Array.isArray(networks) || !networks.length) {
+      networks = Object.keys(networks_data);
+    }
+
+    // The last map seen per instance. Kept separate from networks_data so that
+    // requesting a refresh (which clears the server side copy) does not blank
+    // the graph already on screen.
+    var graphCache = {};
+    var currentNetwork = networks[0] || "";
+
+    var elements = {
+      output: document.getElementById("output"),
+      empty: document.getElementById("empty"),
+      status: document.getElementById("status"),
+      statusText: document.getElementById("statusText"),
+      engine: document.getElementById("engineSelect"),
+      search: document.getElementById("search"),
+      deviceCount: document.getElementById("deviceCount"),
+      routerCount: document.getElementById("routerCount"),
+      endCount: document.getElementById("endCount"),
+      linkCount: document.getElementById("linkCount"),
+      lastUpdate: document.getElementById("lastUpdate"),
+      updateButton: document.getElementById("updateButton"),
+      updateAllButton: document.getElementById("updateAllButton"),
+      networkField: document.getElementById("networkField"),
+      network: document.getElementById("networkSelect"),
+      networkStatus: document.getElementById("networkStatus"),
+      networkStatusText: document.getElementById("networkStatusText"),
+      emptyText: document.getElementById("emptyText"),
+      details: document.getElementById("details"),
+      detailsTitle: document.getElementById("detailsTitle"),
+      detailsMeta: document.getElementById("detailsMeta"),
+      detailsLinks: document.getElementById("detailsLinks"),
+      themeIcon: document.getElementById("themeIcon"),
+      legend: document.getElementById("legend")
+    };
+
+    var STORAGE_PREFIX = "z2m-map:";
+    var ICON_MOON = "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z";
+    var ICON_SUN = "M12 4V2M12 22v-2M4 12H2M22 12h-2M6 6 4.6 4.6M19.4 19.4 18 18M18 6l1.4-1.4M4.6 19.4 6 18M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z";
+
+    /* ---------- small helpers ---------- */
+
+    function readStored(key, fallback) {
+      try {
+        var value = window.localStorage.getItem(STORAGE_PREFIX + key);
+        return value === null ? fallback : value;
+      } catch (err) {
+        return fallback;
+      }
+    }
+
+    function writeStored(key, value) {
+      try {
+        window.localStorage.setItem(STORAGE_PREFIX + key, value);
+      } catch (err) {
+        /* private mode: preferences simply do not persist */
+      }
+    }
+
+    function setStatus(message, options) {
+      var settings = options || {};
+      elements.status.classList.toggle("visible", !!message);
+      elements.status.classList.toggle("busy", !!settings.busy);
+      elements.status.classList.toggle("error", !!settings.error);
+      elements.statusText.textContent = message || "";
+    }
+
+    /* ---------- theme ---------- */
+
+    function applyTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      elements.themeIcon.setAttribute("d", theme === "dark" ? ICON_SUN : ICON_MOON);
+      writeStored("theme", theme);
+      recolourForTheme();
+    }
+
+    applyTheme(readStored(
+      "theme",
+      window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+    ));
+
+    document.getElementById("themeToggle").addEventListener("click", function () {
+      applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
     });
 
-    document.getElementById('lastUpdateTime').innerHTML = last_update.toLocaleString();
+    // Graphviz bakes light-theme colours into the SVG, so nodes that rely on the
+    // default white fill and black text have to be repainted for dark mode.
+    function recolourForTheme() {
+      var svg = elements.output.querySelector("svg");
+      if (!svg) {
+        return;
+      }
+      var dark = document.documentElement.dataset.theme === "dark";
 
-    function sleep(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms));
+      // Graphviz paints an opaque page background as the first polygon of the
+      // root group; the panel supplies its own canvas colour instead.
+      svg.querySelectorAll("g.graph > polygon").forEach(function (backdrop) {
+        backdrop.setAttribute("fill", "transparent");
+        backdrop.setAttribute("stroke", "none");
+      });
+
+      svg.querySelectorAll("g.node").forEach(function (node) {
+        var shape = node.querySelector("polygon, path, ellipse");
+        var painted = shape && (shape.dataset.baseFill || shape.getAttribute("fill") || "none");
+        if (shape) {
+          shape.dataset.baseFill = painted;
+        }
+        var unpainted = !painted || painted === "none" ||
+          painted.toLowerCase() === "#ffffff" || painted.toLowerCase() === "white";
+
+        node.querySelectorAll("polygon, path, ellipse").forEach(function (part) {
+          if (unpainted && part === shape) {
+            part.setAttribute("fill", dark ? "#232c37" : "none");
+          }
+          if (part.getAttribute("stroke")) {
+            part.setAttribute("stroke", dark ? "#8fa0b3" : part.dataset.baseStroke || "#000000");
+          }
+        });
+        node.querySelectorAll("text").forEach(function (text) {
+          if (unpainted) {
+            text.setAttribute("fill", dark ? "#e6eaf0" : "#000000");
+          }
+        });
+      });
+
+      svg.querySelectorAll("g.edge text").forEach(function (text) {
+        text.setAttribute("fill", dark ? "#a8b6c6" : "#000000");
+      });
     }
 
-    function updateMap() {
-      var viz = new Viz();
-      viz.renderSVGElement(graph, { 'engine': document.querySelector("#engine select").value })
-        .then(function (element) {
-          var graph = document.querySelector("#output");
-          var svg = graph.querySelector("svg");
-          if (svg) {
-            graph.removeChild(svg);
+    /* ---------- graph model built from the rendered SVG ---------- */
+
+    var nodesById = {};
+    var edges = [];
+    var selectedId = null;
+
+    var KINDS = ["coordinator", "router", "end"];
+    var KIND_NOUNS = { coordinator: "coordinator", router: "router", end: "end device" };
+    var kindEnabled = { coordinator: true, router: true, end: true };
+    try {
+      var storedKinds = JSON.parse(readStored("kinds", "{}"));
+      KINDS.forEach(function (kind) {
+        if (typeof storedKinds[kind] === "boolean") {
+          kindEnabled[kind] = storedKinds[kind];
+        }
+      });
+    } catch (err) {
+      /* corrupt preference: fall back to showing everything */
+    }
+
+    // zigbee2mqtt paints the coordinator with a red fill, routers with a pale
+    // yellow fill, and leaves battery end devices unfilled.
+    function nodeKind(group) {
+      var shape = group.querySelector("polygon, path, ellipse");
+      var fill = (shape ? shape.getAttribute("fill") || "none" : "none").trim().toLowerCase();
+      if (fill === "none" || fill === "transparent" || fill === "white" || fill === "#ffffff") {
+        return "end";
+      }
+      var hex = /^#([0-9a-f]{6})$/.exec(fill);
+      if (hex) {
+        var red = parseInt(hex[1].slice(0, 2), 16);
+        var green = parseInt(hex[1].slice(2, 4), 16);
+        var blue = parseInt(hex[1].slice(4, 6), 16);
+        if (red > green + 40 && red > blue + 40) {
+          return "coordinator";
+        }
+      }
+      return "router";
+    }
+
+    function parseNode(group) {
+      var lines = [];
+      group.querySelectorAll("text").forEach(function (text) {
+        var value = text.textContent.trim();
+        if (value) {
+          lines.push(value);
+        }
+      });
+      var titleElement = group.querySelector("title");
+      var id = titleElement ? titleElement.textContent.trim() : lines[0] || "";
+      var address = lines.find(function (line) { return /^0x[0-9a-f]+$/i.test(line); }) || id;
+      return {
+        id: id,
+        group: group,
+        label: lines[0] || id,
+        address: address,
+        model: lines.filter(function (line) { return line !== address; })[1] || "",
+        kind: nodeKind(group),
+        lines: lines,
+        search: (lines.join(" ") + " " + id).toLowerCase()
+      };
+    }
+
+    function indexGraph(svg) {
+      nodesById = {};
+      edges = [];
+
+      svg.querySelectorAll("g.node").forEach(function (group) {
+        var node = parseNode(group);
+        nodesById[node.id] = node;
+        group.addEventListener("click", function (event) {
+          event.stopPropagation();
+          selectNode(node.id);
+        });
+      });
+
+      svg.querySelectorAll("g.edge").forEach(function (group) {
+        var titleElement = group.querySelector("title");
+        var parts = (titleElement ? titleElement.textContent : "").split(/->|--/);
+        var label = group.querySelector("text");
+        edges.push({
+          group: group,
+          from: (parts[0] || "").trim(),
+          to: (parts[1] || "").trim(),
+          lqi: label ? label.textContent.trim() : ""
+        });
+      });
+
+    }
+
+    function setChip(element, shown, total, noun) {
+      var value = shown === total ? String(total) : shown + "/" + total;
+      element.innerHTML = "<b></b> " + noun + (total === 1 ? "" : "s");
+      element.querySelector("b").textContent = value;
+    }
+
+    function updateCounts() {
+      var totals = { coordinator: 0, router: 0, end: 0 };
+      var shownDevices = 0;
+
+      Object.keys(nodesById).forEach(function (id) {
+        var kind = nodesById[id].kind;
+        totals[kind] = (totals[kind] || 0) + 1;
+        if (kindEnabled[kind]) {
+          shownDevices++;
+        }
+      });
+
+      var shownEdges = edges.filter(function (edge) {
+        return !edge.group.classList.contains("hidden");
+      }).length;
+
+      setChip(elements.deviceCount, shownDevices, Object.keys(nodesById).length, "device");
+      setChip(elements.routerCount, totals.router, totals.router, "router");
+      setChip(elements.endCount, totals.end, totals.end, "end device");
+      setChip(elements.linkCount, shownEdges, edges.length, "link");
+
+      elements.legend.querySelectorAll("button").forEach(function (button) {
+        var kind = button.dataset.kind;
+        button.querySelector(".count").textContent = String(totals[kind] || 0);
+        button.setAttribute("aria-pressed", kindEnabled[kind] ? "true" : "false");
+        button.disabled = !totals[kind];
+      });
+    }
+
+    function neighboursOf(id) {
+      var found = {};
+      edges.forEach(function (edge) {
+        if (edge.from === id) {
+          found[edge.to] = edge.lqi;
+        } else if (edge.to === id) {
+          found[edge.from] = edge.lqi;
+        }
+      });
+      return found;
+    }
+
+    /* ---------- filtering and selection share one dimming pass ---------- */
+
+    function applyEmphasis() {
+      var term = elements.search.value.trim().toLowerCase();
+      var focus = {};
+      var active = false;
+      var visible = {};
+
+      // The device-type filter hides nodes outright; the text filter only dims.
+      Object.keys(nodesById).forEach(function (id) {
+        var node = nodesById[id];
+        var shown = !!kindEnabled[node.kind];
+        node.group.classList.toggle("hidden", !shown);
+        if (shown) {
+          visible[id] = true;
+        }
+      });
+
+      edges.forEach(function (edge) {
+        edge.group.classList.toggle("hidden", !visible[edge.from] || !visible[edge.to]);
+      });
+
+      if (selectedId && !visible[selectedId]) {
+        selectedId = null;
+        elements.details.classList.remove("visible");
+      }
+
+      updateCounts();
+
+      if (selectedId && nodesById[selectedId]) {
+        focus[selectedId] = true;
+        active = true;
+      } else if (term) {
+        Object.keys(visible).forEach(function (id) {
+          if (nodesById[id].search.indexOf(term) !== -1) {
+            focus[id] = true;
+            active = true;
           }
-          svg = graph.appendChild(element);
-          window.pz = panzoom(svg.firstElementChild, { autocenter: true, bounds: true });
+        });
+      }
+
+      document.body.classList.toggle("filtering", active);
+      if (!active) {
+        Object.keys(nodesById).forEach(function (id) {
+          nodesById[id].group.classList.remove("dim", "near");
+        });
+        edges.forEach(function (edge) { edge.group.classList.remove("dim"); });
+        return;
+      }
+
+      var near = {};
+      Object.keys(focus).forEach(function (id) {
+        Object.keys(neighboursOf(id)).forEach(function (neighbour) {
+          if (!focus[neighbour] && visible[neighbour]) {
+            near[neighbour] = true;
+          }
+        });
+      });
+
+      Object.keys(visible).forEach(function (id) {
+        var group = nodesById[id].group;
+        group.classList.toggle("dim", !focus[id] && !near[id]);
+        group.classList.toggle("near", !focus[id] && !!near[id]);
+        group.classList.toggle("selected", id === selectedId);
+      });
+
+      edges.forEach(function (edge) {
+        var touches = focus[edge.from] || focus[edge.to];
+        edge.group.classList.toggle("dim", !touches);
+      });
+    }
+
+    function selectNode(id) {
+      var node = nodesById[id];
+      if (!node) {
+        return;
+      }
+      selectedId = id;
+      elements.detailsTitle.textContent = node.label;
+
+      var rows = [["Address", node.address]];
+      if (node.model) {
+        rows.push(["Model", node.model]);
+      }
+      var allNeighbours = neighboursOf(id);
+      var neighbours = {};
+      Object.keys(allNeighbours).forEach(function (neighbourId) {
+        var neighbour = nodesById[neighbourId];
+        if (!neighbour || kindEnabled[neighbour.kind]) {
+          neighbours[neighbourId] = allNeighbours[neighbourId];
+        }
+      });
+      var shownLinks = Object.keys(neighbours).length;
+      var totalLinks = Object.keys(allNeighbours).length;
+      rows.push([
+        "Links",
+        shownLinks === totalLinks ? String(totalLinks) : shownLinks + " of " + totalLinks
+      ]);
+
+      elements.detailsMeta.innerHTML = rows.map(function (row) {
+        return "<dt>" + row[0] + "</dt><dd></dd>";
+      }).join("");
+      elements.detailsMeta.querySelectorAll("dd").forEach(function (cell, index) {
+        cell.textContent = rows[index][1];
+      });
+
+      elements.detailsLinks.innerHTML = "";
+      Object.keys(neighbours).forEach(function (neighbourId) {
+        var item = document.createElement("li");
+        var name = document.createElement("span");
+        name.textContent = (nodesById[neighbourId] || {}).label || neighbourId;
+        var lqi = document.createElement("span");
+        lqi.className = "lqi";
+        lqi.textContent = neighbours[neighbourId] ? "LQI " + neighbours[neighbourId] : "";
+        item.append(name, lqi);
+        elements.detailsLinks.appendChild(item);
+      });
+
+      var wasHidden = !elements.details.classList.contains("visible");
+      elements.details.classList.add("visible");
+      applyEmphasis();
+      if (wasHidden) {
+        fitToView();
+      }
+    }
+
+    function clearSelection() {
+      selectedId = null;
+      elements.details.classList.remove("visible");
+      Object.keys(nodesById).forEach(function (id) {
+        nodesById[id].group.classList.remove("selected");
+      });
+      applyEmphasis();
+    }
+
+    elements.detailsClose = document.getElementById("detailsClose");
+    elements.detailsClose.addEventListener("click", clearSelection);
+
+    // Clicking empty canvas clears the selection, but panning must not: a drag
+    // still ends with a click event on the element under the pointer.
+    var pointerStart = null;
+    elements.output.addEventListener("pointerdown", function (event) {
+      pointerStart = { x: event.clientX, y: event.clientY };
+    });
+    elements.output.addEventListener("click", function (event) {
+      var dragged = pointerStart &&
+        (Math.abs(event.clientX - pointerStart.x) > 4 ||
+          Math.abs(event.clientY - pointerStart.y) > 4);
+      pointerStart = null;
+      if (!dragged && !event.target.closest("g.node")) {
+        clearSelection();
+      }
+    });
+    elements.search.addEventListener("input", function () {
+      selectedId = null;
+      elements.details.classList.remove("visible");
+      applyEmphasis();
+    });
+
+    function toggleKind(kind) {
+      if (KINDS.indexOf(kind) === -1) {
+        return;
+      }
+      var stillShown = KINDS.filter(function (other) {
+        return other !== kind && kindEnabled[other];
+      }).length;
+      if (kindEnabled[kind] && !stillShown) {
+        // Never let the canvas end up empty with no explanation.
+        return;
+      }
+      kindEnabled[kind] = !kindEnabled[kind];
+      writeStored("kinds", JSON.stringify(kindEnabled));
+      applyEmphasis();
+      fitToView();
+    }
+
+    elements.legend.querySelectorAll("button").forEach(function (button) {
+      button.addEventListener("click", function () {
+        toggleKind(button.dataset.kind);
+      });
+    });
+
+    /* ---------- zoom and pan ---------- */
+
+    var panzoomInstance = null;
+
+    // getBBox() on the root group still spans nodes hidden by the type filter,
+    // so measure the union of what is actually drawn.
+    function visibleBox(root) {
+      var left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+      root.querySelectorAll("g.node:not(.hidden), g.edge:not(.hidden)").forEach(function (group) {
+        var box = group.getBBox();
+        if (!box.width && !box.height) {
+          return;
+        }
+        left = Math.min(left, box.x);
+        top = Math.min(top, box.y);
+        right = Math.max(right, box.x + box.width);
+        bottom = Math.max(bottom, box.y + box.height);
+      });
+      if (left === Infinity) {
+        return root.getBBox();
+      }
+      return { x: left, y: top, width: right - left, height: bottom - top };
+    }
+
+    function fitToView() {
+      var svg = elements.output.querySelector("svg");
+      if (!svg || !panzoomInstance) {
+        return;
+      }
+      var root = svg.firstElementChild;
+      var box = visibleBox(root);
+      var frame = elements.output.getBoundingClientRect();
+      if (!box.width || !box.height || !frame.width) {
+        return;
+      }
+
+      // Keep the graph clear of the floating legend, details card and zoom bar.
+      var inset = { top: 24, right: 24, bottom: 24, left: 24 };
+      [
+        [elements.legend, "bottom", "left"],
+        [elements.details, "bottom", "right"],
+        [document.getElementById("zoombar"), "top", "right"]
+      ].forEach(function (entry) {
+        var element = entry[0];
+        if (!element || !element.offsetParent) {
+          return;
+        }
+        var size = element.getBoundingClientRect();
+        inset[entry[1]] = Math.max(inset[entry[1]], size.height + 24);
+        inset[entry[2]] = Math.max(inset[entry[2]], 24);
+      });
+
+      var usableWidth = Math.max(80, frame.width - inset.left - inset.right);
+      var usableHeight = Math.max(80, frame.height - inset.top - inset.bottom);
+      var scale = Math.min(usableWidth / box.width, usableHeight / box.height);
+
+      panzoomInstance.zoomAbs(0, 0, scale);
+      panzoomInstance.moveTo(
+        inset.left + (usableWidth - box.width * scale) / 2 - box.x * scale,
+        inset.top + (usableHeight - box.height * scale) / 2 - box.y * scale
+      );
+    }
+
+    function zoomBy(ratio) {
+      if (!panzoomInstance) {
+        return;
+      }
+      var frame = elements.output.getBoundingClientRect();
+      panzoomInstance.smoothZoom(frame.width / 2, frame.height / 2, ratio);
+    }
+
+    document.getElementById("zoomIn").addEventListener("click", function () { zoomBy(1.3); });
+    document.getElementById("zoomOut").addEventListener("click", function () { zoomBy(1 / 1.3); });
+    document.getElementById("zoomFit").addEventListener("click", fitToView);
+
+    /* ---------- rendering ---------- */
+
+    // neato and fdp overlap nodes badly on zigbee2mqtt's DOT, which sets no
+    // graph-level attributes of its own.
+    function withLayoutHints(source, engine) {
+      if (["neato", "fdp", "sfdp"].indexOf(engine) === -1 || /\boverlap\s*=/.test(source)) {
+        return source;
+      }
+      return source.replace(/\{/, "{\ngraph [overlap=false, splines=curved, sep=\"+20\"];");
+    }
+
+    function renderGraph(options) {
+      var settings = options || {};
+      var engine = elements.engine.value;
+
+      var graph = currentGraph();
+      elements.empty.classList.toggle("visible", !graph);
+      if (!graph) {
+        describeEmptyState();
+        elements.output.innerHTML = "";
+        nodesById = {};
+        edges = [];
+        updateCounts();
+        return Promise.resolve();
+      }
+
+      var renderNotice = "Rendering with " + engine + "…";
+      setStatus(renderNotice, { busy: true });
+      return new Viz()
+        .renderSVGElement(withLayoutHints(graph, engine), { engine: engine })
+        .then(function (svg) {
+          elements.output.innerHTML = "";
+          elements.output.appendChild(svg);
+          svg.removeAttribute("width");
+          svg.removeAttribute("height");
+
+          panzoomInstance = panzoom(svg.firstElementChild, {
+            bounds: false,
+            maxZoom: 12,
+            minZoom: 0.05,
+            zoomDoubleClickSpeed: 1,
+            smoothScroll: false
+          });
+
+          indexGraph(svg);
+          recolourForTheme();
+
+          if (settings.keepSelection && selectedId && nodesById[selectedId]) {
+            selectNode(selectedId);
+          } else {
+            selectedId = null;
+            elements.details.classList.remove("visible");
+            applyEmphasis();
+          }
+
+          // getBBox skips hidden nodes, so fit last for a tight frame.
+          fitToView();
+          // Only clear the notice this render put up: the poller may have
+          // replaced it with a "waiting" or timeout message meanwhile.
+          if (elements.statusText.textContent === renderNotice) {
+            setStatus("");
+          }
+        })
+        .catch(function (err) {
+          setStatus("Could not render the map: " + err.message, { error: true });
         });
     }
 
-
-    var tmpIChecks = 0;
-    async function checkForUpdate() {
-      try {
-        if(typeof webhook_check_update_id == 'undefined')
-          throw "webhook_check_update_id JS var is undefined, please check if <config>/www/community/zigbee2mqtt_networkmap folder is writable";
-       
-        document.getElementById('output').innerHTML = "Checking for graph update...";
-        document.body.style.cursor = 'progress';
-        var xmlhttp = new XMLHttpRequest();
-        xmlhttp.open("POST", '/api/webhook/' + webhook_check_update_id);
-        xmlhttp.setRequestHeader("Content-Type", "application/json");
-        xmlhttp.send();
-
-        xmlhttp.onreadystatechange = function (oEvent) {  
-          if (xmlhttp.readyState === 4) {  
-              if (xmlhttp.status === 200) { 
-                tmpIChecks++;
-                document.getElementById('output').innerHTML  = "No update received yet. Re-checking..." + tmpIChecks;
-
-                if(xmlhttp.response){
-                  var jsonResponse = JSON.parse(xmlhttp.response);
-                  //console.log(xmlhttp);
-                  //console.log(xmlhttp.response);
-                  //console.log(jsonResponse);
-
-                  if(jsonResponse.success){
-                    if(jsonResponse.update_received == true){
-                      if(checkInterval){
-                        clearInterval(checkInterval);
-                        checkInterval = null;
-                      }
-
-                      document.getElementById('lastUpdateTime').innerHTML = jsonResponse.last_update;
-
-                      document.getElementById('output').innerHTML = '';
-                      graph = jsonResponse.update_received_data;
-                      updateMap();
-
-                    }
-                  }else{
-                    throw('Error with backend check of graph update');
-                  }
-                }else{
-                  throw('Error with backend check of graph update');
-                }
-                
-              } else { 
-                document.getElementById('output').innerHTML = "Error with graph check.";
-                //alert("Error", xmlhttp.statusText);  
-                throw(xmlhttp.statusText);
-              }  
-          }
-        }  
-
+    function showLastUpdate(value) {
+      if (!value) {
+        elements.lastUpdate.textContent = "Never updated";
+        return;
       }
-      catch(err){
-        if(checkInterval){
-          clearInterval(checkInterval);
-          checkInterval = null;
+      var when = value instanceof Date ? value : new Date(value.replace(/-/g, "/"));
+      elements.lastUpdate.textContent = isNaN(when.getTime())
+        ? String(value)
+        : "Updated " + when.toLocaleString();
+    }
+
+    /* ---------- the watched zigbee2mqtt instances ---------- */
+
+    function networkInfo(topic) {
+      return networks_data[topic] || {};
+    }
+
+    function currentGraph() {
+      var cached = graphCache[currentNetwork];
+      return cached ? cached.graph : null;
+    }
+
+    function statusOf(topic) {
+      var online = networkInfo(topic).online;
+      if (online === true) {
+        return { key: "online", label: "online" };
+      }
+      if (online === false) {
+        return { key: "offline", label: "offline" };
+      }
+      return { key: "unknown", label: "not seen" };
+    }
+
+    // Absorb a {topic: {...}} payload from source.js or the check webhook.
+    function absorbNetworks(payload) {
+      Object.keys(payload || {}).forEach(function (topic) {
+        var info = payload[topic];
+        networks_data[topic] = info;
+        if (networks.indexOf(topic) === -1) {
+          networks.push(topic);
         }
+        if (info && info.graph) {
+          graphCache[topic] = { graph: info.graph, last_update: info.last_update };
+        }
+      });
+    }
 
-        alert("Error: " + err);
+    function refreshNetworkChrome() {
+      var multiple = networks.length > 1;
+      elements.networkField.style.display = multiple ? "" : "none";
+      elements.updateAllButton.style.display = multiple ? "" : "none";
+      elements.networkStatus.style.display = networks.length ? "" : "none";
+
+      elements.network.innerHTML = "";
+      networks.forEach(function (topic) {
+        var option = document.createElement("option");
+        option.value = topic;
+        option.textContent = topic + " · " + statusOf(topic).label;
+        elements.network.appendChild(option);
+      });
+      elements.network.value = currentNetwork;
+
+      var status = statusOf(currentNetwork);
+      elements.networkStatus.querySelector(".dot").className = "dot " + status.key;
+      elements.networkStatusText.textContent = status.label;
+      elements.networkStatus.title = currentNetwork
+        ? currentNetwork + " is " + status.label
+        : "No zigbee2mqtt instance configured";
+
+      var cached = graphCache[currentNetwork];
+      showLastUpdate(cached ? cached.last_update : null);
+    }
+
+    function describeEmptyState() {
+      if (!currentNetwork) {
+        elements.emptyText.textContent =
+          "No zigbee2mqtt base topic is configured. Add one in the integration options.";
+        return;
       }
-      finally {
-        document.body.style.cursor = 'default';
+      var online = networkInfo(currentNetwork).online;
+      if (online === false) {
+        elements.emptyText.textContent =
+          currentNetwork + " reports that it is offline. Start that zigbee2mqtt " +
+          "instance, then click Update.";
+      } else if (online !== true) {
+        elements.emptyText.textContent =
+          "Nothing has been heard from " + currentNetwork + " yet, so that " +
+          "instance may not be running. Update still works if it is simply quiet.";
+      } else {
+        elements.emptyText.textContent =
+          "Click Update to ask " + currentNetwork + " for the current mesh. " +
+          "Scanning a large network can take a minute or two.";
       }
     }
 
-    var checkInterval = null;
-
-    async function updateSource() {
-      tmpIChecks = 0;
-      if(checkInterval){
-        clearInterval(checkInterval);
-        checkInterval = null;
+    function selectNetwork(topic) {
+      if (networks.indexOf(topic) === -1 || topic === currentNetwork) {
+        return;
       }
-      
-      // Call the Webhook, wait a few seconds til source.js is ready and then reload the page.
-      try {
-        if(typeof webhook_trigger_update_id == 'undefined')
-          throw "webhook_trigger_update_id JS var is undefined, please check if <config>/www/community/zigbee2mqtt_networkmap folder is writable";
-          
-            document.getElementById('output').innerHTML = "Requesting graph update...";
-            document.body.style.cursor = 'progress';
-            var xmlhttp = new XMLHttpRequest();
-            xmlhttp.open("POST", '/api/webhook/' + webhook_trigger_update_id);
-            xmlhttp.setRequestHeader("Content-Type", "application/json");
-            xmlhttp.send();
-            
-            xmlhttp.onreadystatechange = function (oEvent) {  
-            if (xmlhttp.readyState === 4) {  
-                if (xmlhttp.status === 200) { 
-                  if(xmlhttp.response){
-                    //var jsonResponse = JSON.parse(xmlhttp.response);
-                    //console.log(xmlhttp);
-                    //console.log(xmlhttp.response);
-                    //console.log(jsonResponse);
-                    
-                    document.getElementById('output').innerHTML  = "Graph update request sent. Waiting for graph response, checking every 3 seconds...";
+      currentNetwork = topic;
+      writeStored("network", topic);
+      selectedId = null;
+      elements.details.classList.remove("visible");
+      elements.search.value = "";
+      refreshNetworkChrome();
+      renderGraph();
+    }
 
-                    //checkForUpdate(); //For some reason the server doesnt update the variables right away after receiving a msg, so lets re-check every 3 seconds
-                    checkInterval = setInterval(checkForUpdate, 3000);
+    elements.network.addEventListener("change", function () {
+      selectNetwork(elements.network.value);
+    });
 
-                  }else{
-                    document.getElementById('output').innerHTML = "Error with graph update, try reloading this page or HASS";
-                    throw('Error');
-                  }
+    /* ---------- talking to Home Assistant ---------- */
 
-                } else { 
-                  document.getElementById('output').innerHTML = "Error with graph update.";
-                  //alert("Error", xmlhttp.statusText);  
-                  throw(xmlhttp.statusText);
-                }  
-            }  
-        }; 
+    function callWebhook(webhookId, body) {
+      return fetch("/api/webhook/" + webhookId, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body || {})
+      }).then(function (response) {
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status + " " + response.statusText);
+        }
+        return response.json();
+      }).then(function (payload) {
+        if (!payload || !payload.success) {
+          throw new Error("the backend rejected the request");
+        }
+        return payload;
+      });
+    }
+
+    var pollTimer = null;
+    var pollCount = 0;
+    var pollTargets = [];
+    var POLL_INTERVAL = 3000;
+    // A configured instance may not exist at all, so give up rather than poll
+    // forever: 40 checks at 3 seconds is two minutes.
+    var POLL_LIMIT = 40;
+    var WEBHOOK_HINT = " — check that <config>/www/community/zigbee2mqtt_networkmap is writable, then restart Home Assistant.";
+
+    function stopPolling() {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
       }
-      catch(err){
-          alert("Error: " + err);
-      }
-      finally {
-        document.body.style.cursor = 'default';
-      }
-   }
+      pollTargets = [];
+      elements.updateButton.disabled = false;
+      elements.updateAllButton.disabled = false;
+    }
 
-   updateMap();   
+    function pollWindowLabel() {
+      var seconds = Math.round(POLL_LIMIT * POLL_INTERVAL / 1000);
+      return seconds < 90
+        ? seconds + " seconds"
+        : Math.round(seconds / 60) + " minutes";
+    }
+
+    function pending() {
+      return pollTargets.filter(function (topic) {
+        return !networkInfo(topic).graph;
+      });
+    }
+
+    function checkForUpdate() {
+      pollCount++;
+      callWebhook(webhook_check_update_id).then(function (payload) {
+        var waitingFor = pollTargets.slice();
+        absorbNetworks(payload.networks);
+        refreshNetworkChrome();
+
+        var missing = pending();
+        // Drop settled networks so the next check only waits on the rest.
+        pollTargets = missing;
+
+        var arrivedCurrent = waitingFor.indexOf(currentNetwork) !== -1 &&
+          missing.indexOf(currentNetwork) === -1;
+
+        if (arrivedCurrent) {
+          renderGraph({ keepSelection: true });
+        }
+
+        if (!missing.length) {
+          stopPolling();
+          if (!arrivedCurrent) {
+            setStatus("");
+          }
+          return;
+        }
+
+        if (pollCount >= POLL_LIMIT) {
+          stopPolling();
+          setStatus(
+            "No answer from " + missing.join(", ") + " after " +
+            pollWindowLabel() + ". Is that zigbee2mqtt instance running?",
+            { error: true }
+          );
+          return;
+        }
+
+        setStatus(
+          "Waiting for " + missing.join(", ") + "… (check " + pollCount + ")",
+          { busy: true }
+        );
+      }).catch(function (err) {
+        stopPolling();
+        setStatus("Could not check for a map update: " + err.message, { error: true });
+      });
+    }
+
+    function requestUpdate(topics) {
+      stopPolling();
+      pollCount = 0;
+
+      if (typeof webhook_trigger_update_id === "undefined" ||
+        typeof webhook_check_update_id === "undefined") {
+        setStatus("Webhook IDs are missing" + WEBHOOK_HINT, { error: true });
+        return;
+      }
+
+      var wanted = (topics && topics.length ? topics : [currentNetwork])
+        .filter(function (topic) { return networks.indexOf(topic) !== -1; });
+      if (!wanted.length) {
+        setStatus("No zigbee2mqtt instance is configured.", { error: true });
+        return;
+      }
+
+      // The backend clears its copy on request; mirror that so the first check
+      // does not mistake the previous map for the new one.
+      wanted.forEach(function (topic) {
+        if (networks_data[topic]) {
+          networks_data[topic].graph = null;
+        }
+      });
+
+      pollTargets = wanted;
+      elements.updateButton.disabled = true;
+      elements.updateAllButton.disabled = true;
+      setStatus("Asking " + wanted.join(", ") + " for the mesh…", { busy: true });
+
+      var body = wanted.length === networks.length && networks.length > 1
+        ? {}
+        : { network: wanted };
+
+      callWebhook(webhook_trigger_update_id, body).then(function () {
+        setStatus(
+          "Scanning " + wanted.join(", ") + ". Checking every 3 seconds…",
+          { busy: true }
+        );
+        // zigbee2mqtt walks every router, so this can take a while.
+        pollTimer = setInterval(checkForUpdate, POLL_INTERVAL);
+      }).catch(function (err) {
+        stopPolling();
+        setStatus("Could not request a map update: " + err.message, { error: true });
+      });
+    }
+
+    elements.updateButton.addEventListener("click", function () {
+      requestUpdate([currentNetwork]);
+    });
+    elements.updateAllButton.addEventListener("click", function () {
+      requestUpdate(networks.slice());
+    });
+
+    /* ---------- engine choice, keyboard, resize ---------- */
+
+    var urlEngine = new URL(window.location.href).searchParams.get("engine");
+    var storedEngine = readStored("engine", "circo");
+    elements.engine.value = urlEngine || storedEngine;
+    if (!elements.engine.value) {
+      elements.engine.value = "circo";
+    }
+
+    elements.engine.addEventListener("change", function () {
+      writeStored("engine", elements.engine.value);
+      renderGraph({ keepSelection: true });
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.target.matches("input, select, textarea")) {
+        if (event.key === "Escape") {
+          event.target.blur();
+        }
+        return;
+      }
+      if (event.key === "/") {
+        event.preventDefault();
+        elements.search.focus();
+      } else if (event.key === "1" || event.key === "2" || event.key === "3") {
+        toggleKind(KINDS[Number(event.key) - 1]);
+      } else if (event.key === "f") {
+        fitToView();
+      } else if (event.key === "r") {
+        requestUpdate([currentNetwork]);
+      } else if (event.key === "R") {
+        requestUpdate(networks.slice());
+      } else if (event.key === "n" && networks.length > 1) {
+        selectNetwork(networks[(networks.indexOf(currentNetwork) + 1) % networks.length]);
+      } else if (event.key === "+" || event.key === "=") {
+        zoomBy(1.3);
+      } else if (event.key === "-") {
+        zoomBy(1 / 1.3);
+      } else if (event.key === "Escape") {
+        elements.search.value = "";
+        clearSelection();
+      }
+    });
+
+    var resizeTimer = null;
+    window.addEventListener("resize", function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(fitToView, 150);
+    });
+
+    absorbNetworks(networks_data);
+    var storedNetwork = readStored("network", "");
+    if (networks.indexOf(storedNetwork) !== -1) {
+      currentNetwork = storedNetwork;
+    }
+    refreshNetworkChrome();
+    renderGraph();
   </script>
 </body>
 

@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Zigbee map",
+        "description": "Nhập mỗi base topic của zigbee2mqtt trên một dòng. Mỗi giá trị phải khớp `mqtt.base_topic` của instance tương ứng, ví dụ `zigbee2mqtt`, `zigbee2mqtt2`, `zigbee2mqtt3`. Instance chưa chạy vẫn khai báo trước được: nó sẽ hiện là không khả dụng cho tới khi xuất hiện.",
+        "data": {
+          "topics": "Base topics"
+        }
+      }
+    },
+    "error": {
+      "invalid_topics": "Nhập ít nhất một base topic."
+    },
+    "abort": {
+      "single_instance_allowed": "Zigbee map đã được cấu hình. Thêm instance zigbee2mqtt khác qua nút Cấu hình."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Tùy chọn Zigbee map",
+        "description": "Thêm hoặc bớt base topic của zigbee2mqtt. Integration sẽ tự nạp lại sau khi lưu.",
+        "data": {
+          "topics": "Base topics"
+        }
+      }
+    },
+    "error": {
+      "invalid_topics": "Nhập ít nhất một base topic."
+    }
+  },
+  "services": {
+    "update": {
+      "name": "Cập nhật",
+      "description": "Yêu cầu zigbee2mqtt gửi lại sơ đồ mạng. Không truyền network thì hỏi toàn bộ base topic đã cấu hình.",
+      "fields": {
+        "network": {
+          "name": "Network",
+          "description": "Base topic của instance zigbee2mqtt cần làm mới. Bỏ trống để làm mới toàn bộ."
+        }
+      }
+    }
+  }
+}

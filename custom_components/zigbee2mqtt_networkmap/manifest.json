@@ -1,12 +1,13 @@
 {
   "domain": "zigbee2mqtt_networkmap",
   "name": "Zigbee map",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "documentation": "https://github.com/javishome/zigbee_map",
-  "dependencies": ["mqtt"],
-  "codeowners": [
-    "@javishome"
-  ],
+  "issue_tracker": "https://github.com/javishome/zigbee_map/issues",
+  "dependencies": ["mqtt", "frontend", "webhook"],
+  "codeowners": ["@javishome"],
   "config_flow": true,
+  "iot_class": "local_push",
+  "integration_type": "service",
   "requirements": []
 }

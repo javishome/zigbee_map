@@ -48,3 +48,7 @@ Thumbs.db
 *.mov
 *.wmv
 
+
+# Home Assistant
+.HA_VERSION
+config/

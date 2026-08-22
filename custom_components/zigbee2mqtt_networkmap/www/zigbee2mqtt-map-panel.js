@@ -12,7 +12,10 @@ class Zigbee2MqttMapPanel extends HTMLElement {
     this.style.width = "100%";
 
     const frame = document.createElement("iframe");
-    frame.src = "/local/community/zigbee2mqtt_networkmap/map.html";
+    // Home Assistant serves /local with a month-long cache header, so without a
+    // busting parameter an updated map.html keeps being read from the browser
+    // cache. viz.js and panzoom are left cacheable: they never change.
+    frame.src = "/local/community/zigbee2mqtt_networkmap/map.html?v=" + Date.now();
     frame.setAttribute("title", "Zigbee network map");
     frame.style.cssText = "display:block;width:100%;height:100%;border:none;";
     this.appendChild(frame);

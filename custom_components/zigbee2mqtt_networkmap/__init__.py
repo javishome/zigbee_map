@@ -176,6 +176,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Zigbee2MQTT Networkmap from a config entry."""
     coordinator = NetworkmapCoordinator(hass, configured_topics(entry))
+    asset_token = int(datetime.now().timestamp())
 
     source_dir = hass.config.path("custom_components", DOMAIN, "www")
     try:
@@ -351,7 +352,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         config={
             "_panel_custom": {
                 "name": PANEL_ELEMENT_NAME,
-                "module_url": f"/local/community/{DOMAIN}/zigbee2mqtt-map-panel.js",
+                # /local is served with a month-long cache header, so the
+                # panel script needs a token that changes when we reload.
+                "module_url": (
+                    f"/local/community/{DOMAIN}/zigbee2mqtt-map-panel.js"
+                    f"?v={asset_token}"
+                ),
                 "full_width": True,
             }
         },

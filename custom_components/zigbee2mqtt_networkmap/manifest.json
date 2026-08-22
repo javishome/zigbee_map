@@ -1,7 +1,7 @@
 {
   "domain": "zigbee2mqtt_networkmap",
   "name": "Zigbee map",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "documentation": "https://github.com/javishome/zigbee_map",
   "issue_tracker": "https://github.com/javishome/zigbee_map/issues",
   "dependencies": ["mqtt", "frontend", "webhook"],

@@ -1,9 +1,15 @@
 class Zigbee2MqttMapPanel extends HTMLElement {
   connectedCallback() {
-    if (this._rendered) {
+    // Home Assistant removes the panel element when you navigate to another
+    // panel, which permanently discards the iframe's browsing context. Rebuild
+    // it on every connect, and only skip when a live frame is already present.
+    const existing = this.querySelector("iframe");
+    if (existing && existing.contentWindow) {
       return;
     }
-    this._rendered = true;
+    if (existing) {
+      existing.remove();
+    }
 
     // The panel host has no intrinsic height, so give it one before the
     // iframe tries to fill it.

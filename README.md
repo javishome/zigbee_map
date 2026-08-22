@@ -1,181 +1,191 @@
 # Zigbee Map
 
-A Home Assistant custom integration that draws the Zigbee mesh reported by
-[zigbee2mqtt](https://www.zigbee2mqtt.io/). It asks zigbee2mqtt for a Graphviz
-network map over MQTT and renders it in a sidebar panel, entirely inside the
-browser — no cloud service and no extra Python dependencies.
+Custom integration cho Home Assistant, vẽ sơ đồ mạng Zigbee do
+[zigbee2mqtt](https://www.zigbee2mqtt.io/) báo về. Integration xin zigbee2mqtt
+một network map dạng Graphviz qua MQTT rồi render ngay trong trình duyệt ở một
+panel trên sidebar — không cần dịch vụ cloud, không cần thêm thư viện Python.
 
-Several zigbee2mqtt instances can be watched at once, each on its own base
-topic, and switched between from the panel.
+Có thể theo dõi nhiều instance zigbee2mqtt cùng lúc, mỗi instance một base
+topic riêng, và chuyển qua lại ngay trong panel.
 
-## Features
+## Tính năng
 
-- **Zigbee Map** panel in the Home Assistant sidebar.
-- Watches one or many zigbee2mqtt instances (`zigbee2mqtt`, `zigbee2mqtt2`, …)
-  with a network picker in the toolbar. Instances that are not running are
-  reported as such instead of breaking the panel.
-- Device counts per type: coordinator, mains-powered routers, battery end
-  devices — and a filter to show or hide each type.
-- Text filter over friendly name, IEEE address and model, which highlights
-  matches and their neighbours.
-- Click a device for its address, model and per-neighbour link quality.
-- Six Graphviz layout engines (`circo`, `dot`, `fdp`, `neato`, `osage`,
-  `twopi`), pan, zoom and fit-to-view.
-- Light and dark theme, following the browser and switchable by hand.
-- A `zigbee2mqtt_networkmap.update` service, optionally scoped to one network.
+- Panel **Zigbee Map** trên sidebar của Home Assistant.
+- Theo dõi một hoặc nhiều instance zigbee2mqtt (`zigbee2mqtt`, `zigbee2mqtt2`,
+  …) với ô chọn network trên toolbar. Instance không chạy sẽ được báo trạng
+  thái rõ ràng chứ không làm panel hỏng.
+- Đếm thiết bị theo loại: coordinator, router (cắm điện), end device (dùng
+  pin) — kèm filter bật/tắt từng loại.
+- Filter theo chữ trên friendly name, địa chỉ IEEE và model: thiết bị khớp
+  được làm nổi, các thiết bị lân cận mờ vừa, còn lại mờ hẳn.
+- Bấm vào thiết bị để xem địa chỉ, model và link quality (LQI) tới từng thiết
+  bị lân cận.
+- Sáu layout engine của Graphviz (`circo`, `dot`, `fdp`, `neato`, `osage`,
+  `twopi`), kéo, zoom và fit-to-view.
+- Giao diện sáng/tối, tự theo trình duyệt và đổi tay được.
+- Service `zigbee2mqtt_networkmap.update`, có thể giới hạn cho một network.
 
-## Requirements
+## Yêu cầu
 
-- Home Assistant 2024.11 or newer with the
-  [MQTT integration](https://www.home-assistant.io/integrations/mqtt/) set up.
-- One or more zigbee2mqtt instances on the same MQTT broker.
-- A writable `<config>/www` folder — the panel assets are copied to
-  `<config>/www/community/zigbee2mqtt_networkmap/` on startup.
+- Home Assistant 2024.11 hoặc mới hơn, đã cài
+  [MQTT integration](https://www.home-assistant.io/integrations/mqtt/).
+- Một hoặc nhiều instance zigbee2mqtt trên cùng MQTT broker.
+- Folder `<config>/www` ghi được — assets của panel được copy sang
+  `<config>/www/community/zigbee2mqtt_networkmap/` lúc khởi động.
 
-## Installation
+## Cài đặt
 
-### HACS (recommended)
+### HACS (khuyến nghị)
 
-1. In HACS, add this repository as a custom repository of type **Integration**.
-2. Install **Zigbee Map**.
+1. Trong HACS, thêm repo này làm custom repository loại **Integration**.
+2. Cài **Zigbee Map**.
 3. Restart Home Assistant.
-4. Go to **Settings → Devices & services → Add integration** and pick
+4. Vào **Settings → Devices & services → Add integration** rồi chọn
    **Zigbee map**.
 
-### Manual
+### Thủ công
 
-1. Copy `custom_components/zigbee2mqtt_networkmap` into your
-   `<config>/custom_components/` folder.
+1. Copy `custom_components/zigbee2mqtt_networkmap` vào folder
+   `<config>/custom_components/`.
 2. Restart Home Assistant.
-3. Add the integration from **Settings → Devices & services**.
+3. Thêm integration ở **Settings → Devices & services**.
 
-## Configuration
+## Cấu hình
 
-The setup dialog asks for the **base topics** to watch — one entry per
-zigbee2mqtt instance. Each must match that instance's `mqtt.base_topic`:
+Form cài đặt hỏi danh sách **base topics** cần theo dõi — mỗi instance
+zigbee2mqtt một dòng. Mỗi giá trị phải khớp `mqtt.base_topic` của instance đó:
 
 | Instance | Base topic |
 | --- | --- |
-| First zigbee2mqtt add-on | `zigbee2mqtt` |
-| Second add-on | `zigbee2mqtt2` |
-| Third add-on | `zigbee2mqtt3` |
+| Add-on zigbee2mqtt thứ nhất | `zigbee2mqtt` |
+| Add-on thứ hai | `zigbee2mqtt2` |
+| Add-on thứ ba | `zigbee2mqtt3` |
 
-Topics can be added or removed later through the integration's **Configure**
-button; the integration reloads itself when the options are saved.
+Thêm hoặc bớt topic sau này qua nút **Configure** của integration; lưu xong
+integration tự nạp lại.
 
-A topic may be listed before its add-on exists. Nothing is required to answer:
-such a network shows as **not seen** in the panel and everything else keeps
-working.
+Khai một topic trước khi add-on tương ứng tồn tại cũng được. Không bắt buộc
+phải có ai trả lời: network đó hiện là **not seen** trong panel, mọi thứ còn
+lại vẫn chạy bình thường.
 
-Only one instance of the *integration* is supported, because the panel assets
-are written to a single shared folder. Watch several zigbee2mqtt instances by
-listing several base topics, not by adding the integration twice.
+Chỉ hỗ trợ **một** instance của *integration*, vì assets của panel được ghi vào
+một folder dùng chung. Muốn theo dõi nhiều instance zigbee2mqtt thì khai nhiều
+base topic, không phải thêm integration nhiều lần.
 
-## Usage
+## Sử dụng
 
-Open **Zigbee Map** in the sidebar.
+Mở **Zigbee Map** trên sidebar.
 
-- **Network** picks the zigbee2mqtt instance to display, with its state next to
-  the name: `online`, `offline`, or `not seen` (nothing heard from it yet).
-- **Update** asks the selected instance for a fresh map. The double-arrow button
-  next to it asks every configured instance.
-- zigbee2mqtt walks the whole mesh, so a scan takes anywhere from a few seconds
-  to a couple of minutes; the panel polls every three seconds and gives up after
-  two minutes with a message naming the instance that stayed silent.
-- **Device types** in the bottom-left corner shows how many coordinators,
-  routers and end devices the map holds; click a row to hide that type.
-- **Filter devices** highlights matching devices and dims the rest.
+- **Network** chọn instance zigbee2mqtt để hiển thị, kèm trạng thái ngay cạnh
+  tên: `online`, `offline`, hoặc `not seen` (chưa nghe thấy gì từ nó).
+- **Update** xin map mới từ instance đang chọn. Nút mũi tên kép bên cạnh xin
+  toàn bộ instance đã cấu hình.
+- zigbee2mqtt phải đi hết mesh nên một lần quét mất từ vài giây tới một hai
+  phút; panel poll mỗi ba giây và bỏ cuộc sau hai phút, kèm thông báo nêu tên
+  instance im lặng.
+- Rời panel không hủy việc quét. Request nằm ở integration chứ không nằm ở
+  trình duyệt, nên map vẫn về và vẫn được lưu trong lúc bạn đang ở chỗ khác.
+  Mở lại panel là thấy map, và nếu việc quét vẫn đang chạy (bắt đầu chưa quá ba
+  phút) thì panel nối lại việc chờ chứ không bắt quét lần nữa.
+- **Device types** ở góc dưới bên trái cho biết map có bao nhiêu coordinator,
+  router và end device; bấm vào một dòng để ẩn loại đó.
+- **Filter devices** làm nổi thiết bị khớp và làm mờ phần còn lại.
 
-Keyboard shortcuts: `/` focus the filter, `1`/`2`/`3` toggle the device types,
-`n` next network, `r` update the current network, `Shift+R` update all, `+`/`-`
-zoom, `f` fit to view, `Esc` clear the filter and selection.
+Phím tắt: `/` vào ô filter, `1`/`2`/`3` bật tắt từng loại thiết bị, `n` sang
+network tiếp theo, `r` update network đang chọn, `Shift+R` update tất cả, `+`/`-`
+zoom, `f` fit to view, `Esc` xóa filter và bỏ chọn.
 
 ### Service
 
 ```yaml
-# Refresh every configured instance
+# Làm mới toàn bộ instance đã cấu hình
 action: zigbee2mqtt_networkmap.update
 ```
 
 ```yaml
-# Refresh one instance
+# Làm mới một instance
 action: zigbee2mqtt_networkmap.update
 data:
   network: zigbee2mqtt2
 ```
 
-`network` also accepts a list. An unknown base topic raises an error naming the
-configured ones.
+`network` cũng nhận một danh sách. Base topic không tồn tại sẽ báo lỗi kèm
+danh sách các topic đã cấu hình.
 
-### State objects
+### Các state object
 
-| Entity | Meaning |
+| Entity | Ý nghĩa |
 | --- | --- |
-| `zigbee2mqtt_networkmap.<topic>_last_update` | Timestamp of that network's last map, one per base topic |
-| `zigbee2mqtt_networkmap.map_last_update` | Timestamp of whichever network updated last, with a `network` attribute |
+| `zigbee2mqtt_networkmap.<topic>_last_update` | Thời điểm map gần nhất của network đó, một entity cho mỗi base topic |
+| `zigbee2mqtt_networkmap.map_last_update` | Thời điểm của network vừa cập nhật gần nhất, kèm attribute `network` |
 
-The per-network entity id uses the slugified base topic, for example
+Entity id theo từng network dùng base topic đã slugify, ví dụ
 `zigbee2mqtt_networkmap.zigbee2mqtt2_last_update`.
 
-## How it works
+## Cách hoạt động
 
-1. On setup, the integration copies its `www/` folder to
-   `<config>/www/community/zigbee2mqtt_networkmap/` and writes a `settings.js`
-   holding two freshly generated webhook IDs and the list of watched topics.
-2. For every base topic it subscribes to
-   `<topic>/bridge/response/networkmap` (the maps) and `<topic>/bridge/state`
-   (whether that instance is online — old `online`/`offline` payloads and newer
-   `{"state": "online"}` are both understood).
-3. The panel is a small custom element that embeds `map.html` in an iframe.
-4. **Update** calls the trigger webhook with the wanted network, which publishes
-   `graphviz` to `<topic>/bridge/request/networkmap`.
-5. Answers are stored in memory and mirrored to `source.js` as
-   `networks_data`, keyed by base topic.
-6. The panel polls the check webhook until the maps arrive, renders them with
-   [viz.js](https://github.com/mdaines/viz.js) (a WebAssembly build of Graphviz)
-   and makes them pan/zoomable with
+1. Lúc setup, integration copy folder `www/` của nó sang
+   `<config>/www/community/zigbee2mqtt_networkmap/` và ghi file `settings.js`
+   chứa hai webhook ID mới sinh cùng danh sách topic đang theo dõi.
+2. Với mỗi base topic, integration subscribe
+   `<topic>/bridge/response/networkmap` (nhận map) và `<topic>/bridge/state`
+   (biết instance có online hay không — đọc được cả payload kiểu cũ
+   `online`/`offline` lẫn kiểu mới `{"state": "online"}`).
+3. Panel là một custom element nhỏ, nhúng `map.html` trong iframe.
+4. **Update** gọi webhook trigger kèm network cần quét, webhook này publish
+   `graphviz` lên `<topic>/bridge/request/networkmap`.
+5. Kết quả được giữ trong memory và ghi ra `source.js` dưới dạng
+   `networks_data`, khóa theo base topic.
+6. Panel poll webhook check tới khi map về, render bằng
+   [viz.js](https://github.com/mdaines/viz.js) (bản build WebAssembly của
+   Graphviz) và cho kéo/zoom bằng
    [panzoom](https://github.com/anvaka/panzoom).
 
-Because the webhook IDs are regenerated on every restart, `settings.js` is
-cache-busted on load.
+Webhook ID được sinh lại mỗi lần restart, nên `settings.js` luôn được nạp kèm
+tham số chống cache.
 
-## Repository layout
+## Cấu trúc repo
 
 ```
 custom_components/zigbee2mqtt_networkmap/
-├── __init__.py        # setup, MQTT plumbing, webhooks, service, panel
-├── config_flow.py     # UI config + options flow
-├── const.py           # shared constants
+├── __init__.py        # setup, phần MQTT, webhook, service, panel
+├── config_flow.py     # config flow + options flow
+├── const.py           # hằng số dùng chung
 ├── manifest.json
 ├── services.yaml
 ├── strings.json
 ├── translations/      # en, vi
-└── www/               # assets copied into <config>/www/community/
+└── www/               # assets được copy vào <config>/www/community/
     ├── map.html
     ├── zigbee2mqtt-map-panel.js
     ├── panzoom/
     └── viz.js/
 ```
 
-## Troubleshooting
+## Xử lý sự cố
 
-**The panel says the webhook IDs are missing.** `settings.js` could not be
-written. Check that `<config>/www/community/zigbee2mqtt_networkmap/` exists and
-is writable, then restart Home Assistant.
+**Panel báo thiếu webhook ID.** Không ghi được `settings.js`. Kiểm tra folder
+`<config>/www/community/zigbee2mqtt_networkmap/` có tồn tại và ghi được không,
+rồi restart Home Assistant.
 
-**A network shows as "not seen".** Nothing has been received on
-`<topic>/bridge/state`. Either that zigbee2mqtt instance is not running, or its
-`mqtt.base_topic` differs from what is configured here.
+**Một network hiện là "not seen".** Chưa nhận được gì trên
+`<topic>/bridge/state`. Hoặc instance zigbee2mqtt đó không chạy, hoặc
+`mqtt.base_topic` của nó khác với giá trị khai ở đây.
 
-**No answer after two minutes.** The base topic matches nothing on the broker.
-Subscribing to `<topic>/bridge/response/networkmap` with an MQTT client shows
-whether zigbee2mqtt answers at all.
+**Không có phản hồi sau hai phút.** Base topic không khớp với gì trên broker.
+Subscribe `<topic>/bridge/response/networkmap` bằng một MQTT client sẽ biết
+zigbee2mqtt có trả lời hay không.
 
-**Layouts overlap.** `neato` and `fdp` get `overlap=false` and curved splines
-injected; if a map is still crowded, try `circo` or `dot`.
+**Layout bị đè lên nhau.** `neato` và `fdp` đã được chèn `overlap=false` cùng
+curved splines; nếu map vẫn chật thì thử `circo` hoặc `dot`.
 
-## Credits
+**Vẫn thấy giao diện cũ sau khi update.** Home Assistant serve `/local` kèm
+cache header dài, nên trình duyệt có thể vẫn dùng bản cũ. Reload integration
+(hoặc restart Home Assistant) để `module_url` mang token mới, rồi hard reload
+trình duyệt một lần bằng `Ctrl+Shift+R`.
 
-Based on the original
-[zigbee2mqtt_networkmap](https://github.com/rgruebel/ha_zigbee2mqtt_networkmap)
-idea, packaged and maintained by [javishome](https://github.com/javishome).
+## Ghi công
+
+Dựa trên ý tưởng gốc
+[zigbee2mqtt_networkmap](https://github.com/rgruebel/ha_zigbee2mqtt_networkmap),
+được đóng gói và bảo trì bởi [javishome](https://github.com/javishome).

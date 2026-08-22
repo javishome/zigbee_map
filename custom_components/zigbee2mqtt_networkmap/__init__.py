@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import shutil
+import time
 from datetime import datetime
 
 import voluptuous as vol
@@ -80,16 +81,37 @@ class NetworkState:
         self.last_update: str | None = None
         # None until zigbee2mqtt announces itself: the instance may not exist.
         self.online: bool | None = None
+        # A scan is in flight. Survives the panel being closed, so reopening it
+        # can pick the wait back up instead of asking for a second scan.
+        self.pending = False
+        self.requested_at: float | None = None
 
     @property
     def entity_id(self) -> str:
         """State object mirroring this network's last update."""
         return f"{DOMAIN}.{self.slug}_last_update"
 
-    def reset(self) -> None:
-        """Forget the previous map so the frontend polls for a fresh one."""
+    def mark_requested(self) -> None:
+        """Forget the previous map and remember that a scan is running."""
         self.graph = None
         self.last_update = None
+        self.pending = True
+        # Monotonic: the panel needs an elapsed time, not a wall clock it would
+        # have to compare against its own possibly-skewed clock.
+        self.requested_at = time.monotonic()
+
+    def mark_received(self, graph: str, timestamp: str) -> None:
+        """Store an arrived map and close off the pending request."""
+        self.graph = graph
+        self.last_update = timestamp
+        self.pending = False
+        self.requested_at = None
+
+    def pending_seconds(self) -> int | None:
+        """How long the current scan has been running, if any."""
+        if not self.pending or self.requested_at is None:
+            return None
+        return int(time.monotonic() - self.requested_at)
 
     def as_payload(self) -> dict:
         """Serialisable view used by the webhook and by source.js.
@@ -103,6 +125,8 @@ class NetworkState:
             "online": self.online,
             "graph": self.graph,
             "last_update": self.last_update,
+            "pending": self.pending,
+            "pending_seconds": self.pending_seconds(),
         }
 
 
@@ -204,7 +228,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def request_maps(networks: list[NetworkState]) -> None:
         """Ask the given networks for a fresh map."""
         for network in networks:
-            network.reset()
+            network.mark_requested()
             hass.states.async_set(network.entity_id, None)
             await async_publish(
                 hass, f"{network.topic}/bridge/request/networkmap", "graphviz"
@@ -282,8 +306,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return
 
             timestamp = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
-            network.graph = graph
-            network.last_update = timestamp
+            network.mark_received(graph, timestamp)
             await write_source()
 
             hass.states.async_set(network.entity_id, timestamp)

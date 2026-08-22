@@ -1468,6 +1468,29 @@
       elements.updateAllButton.disabled = false;
     }
 
+    // Only rejoin a scan that is still plausibly running; a base topic with no
+    // add-on behind it would otherwise stay "pending" forever.
+    var RESUME_MAX_AGE = 180;
+
+    function resumableTargets() {
+      return networks.filter(function (topic) {
+        var info = networkInfo(topic);
+        return info.pending && (info.pending_seconds || 0) < RESUME_MAX_AGE;
+      });
+    }
+
+    function resumePolling(targets) {
+      pollTargets = targets;
+      pollCount = 0;
+      elements.updateButton.disabled = true;
+      elements.updateAllButton.disabled = true;
+      setStatus(
+        "A scan of " + targets.join(", ") + " is already running. Checking\u2026",
+        { busy: true }
+      );
+      pollTimer = setInterval(checkForUpdate, POLL_INTERVAL);
+    }
+
     function pollWindowLabel() {
       var seconds = Math.round(POLL_LIMIT * POLL_INTERVAL / 1000);
       return seconds < 90
@@ -1638,6 +1661,11 @@
     }
     refreshNetworkChrome();
     renderGraph();
+
+    var resumable = resumableTargets();
+    if (resumable.length) {
+      resumePolling(resumable);
+    }
   </script>
 </body>
 
